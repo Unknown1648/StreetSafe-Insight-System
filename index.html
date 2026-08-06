@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StreetSafe Insight - Ongata Rongai</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <style>
+    :root{
+      --primary:#2563eb;
+      --dark:#0f172a;
+      --bg:#f8fafc;
+      --card:#ffffff;
+      --border:#e2e8f0;
+      --muted:#64748b;
+      --shadow:0 12px 30px rgba(15,23,42,.10);
+    }
+
+    *{ box-sizing:border-box; }
+
+    body{
+      margin:0;
+      font-family:'Segoe UI',system-ui,sans-serif;
+      background:var(--bg);
+      color:var(--dark);
+    }
+
+    /* HEADER */
+    header{
+      position:sticky;
+      top:0;
+      z-index:1000;
+      background:rgba(15,23,42,.95);
+      color:white;
+      padding:18px 24px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      flex-wrap:wrap;
+      backdrop-filter:blur(10px);
+      border-bottom:1px solid rgba(255,255,255,.08);
+    }
+
+    header h1{
+      margin:0;
+      font-size:1.6rem;
+    }
+
+    header p{
+      margin:4px 0 0;
+      font-size:.9rem;
+      color:#cbd5e1;
+    }
+
+    /* ACTIONS */
+    .actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .btn{
+      padding:10px 14px;
+      border-radius:10px;
+      text-decoration:none;
+      font-weight:600;
+      font-size:.9rem;
+      border:none;
+      cursor:pointer;
+      transition:.2s;
+    }
+
+    .btn-primary{ background:#2563eb; color:white; }
+    .btn-dark{ background:#111827; color:white; }
+    .btn-green{ background:#16a34a; color:white; }
+
+    .btn:hover{
+      transform:translateY(-2px);
+      opacity:.9;
+    }
+
+    /* MAIN */
+    main{
+      max-width:1400px;
+      margin:auto;
+      padding:24px;
+    }
+
+    /* KPI */
+    .kpi-grid{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:12px;
+      margin-bottom:18px;
+    }
+
+    .kpi{
+      background:white;
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:14px;
+      text-align:center;
+      box-shadow:0 6px 18px rgba(0,0,0,.05);
+    }
+
+    .kpi .label{
+      font-size:.8rem;
+      color:var(--muted);
+    }
+
+    .kpi .value{
+      font-size:1.4rem;
+      font-weight:800;
+      color:var(--primary);
+    }
+
+    /* MAP (HERO SECTION) */
+    .map-section{
+      margin-bottom:24px;
+    }
+
+    #map{
+      height:620px; /* BIG HERO MAP */
+      border-radius:18px;
+      border:1px solid var(--border);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+
+    .map-title{
+      margin:10px 0 12px;
+      font-size:1.1rem;
+      font-weight:700;
+    }
+
+    /* STREETS GRID (4 COLUMNS) */
+    #streets-container{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:12px;
+    }
+
+    .street-card{
+      background:white;
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:14px;
+      box-shadow:0 6px 18px rgba(0,0,0,.05);
+      transition:.2s;
+    }
+
+    .street-card:hover{
+      transform:translateY(-3px);
+      border-color:#93c5fd;
+    }
+
+    .street-name{
+      font-weight:700;
+      margin-bottom:6px;
+    }
+
+    .street-score{
+      font-size:.9rem;
+      color:var(--muted);
+    }
+
+    /* INCIDENTS */
+    #incidents-list{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      margin-top:20px;
+    }
+
+    .incident{
+      background:white;
+      border:1px solid var(--border);
+      padding:12px;
+      border-radius:12px;
+      transition:.2s;
+    }
+
+    .incident:hover{
+      transform:translateY(-2px);
+    }
+
+    .muted{
+      color:var(--muted);
+      font-size:.85rem;
+    }
+
+    /* RESPONSIVE */
+    @media(max-width:1100px){
+      #streets-container{
+        grid-template-columns:repeat(2,1fr);
+      }
+    }
+
+    @media(max-width:600px){
+      #streets-container{
+        grid-template-columns:1fr;
+      }
+
+      .kpi-grid{
+        grid-template-columns:1fr;
+      }
+
+      #map{
+        height:420px;
+      }
+    }
+
+  </style>
+</head>
+
+<body>
+
+<header>
+  <div>
+    <h1>🛡 StreetSafe Insight</h1>
+    <p>Real-time Community Safety Dashboard • Ongata Rongai</p>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-primary" onclick="refreshData()">🔄 Refresh</button>
+    <a class="btn btn-dark" href="login.html">Login</a>
+  </div>
+</header>
+
+<main>
+
+  <!-- KPI -->
+  <div class="kpi-grid">
+    <div class="kpi">
+      <div class="label">Total Incidents</div>
+      <div class="value" id="kpi-incidents">0</div>
+    </div>
+
+    <div class="kpi">
+      <div class="label">Active Alerts</div>
+      <div class="value" id="kpi-alerts">0</div>
+    </div>
+
+    <div class="kpi">
+      <div class="label">Safety Score</div>
+      <div class="value" id="kpi-score">92</div>
+    </div>
+  </div>
+
+  <!-- MAP (75% focus) -->
+  <div class="map-section">
+    <div class="map-title">🗺 Live Crime Map</div>
+    <div id="map"></div>
+  </div>
+
+  <!-- STREETS BELOW MAP -->
+  <div>
+    <h2 style="margin:0 0 12px;">🛣 Street Safety Status</h2>
+    <div id="streets-container"></div>
+  </div>
+
+  <!-- INCIDENTS -->
+  <div style="margin-top:30px;">
+    <h2>🚨 Recent Incidents</h2>
+    <div id="incidents-list"></div>
+  </div>
+
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module" src="js/main.js"></script>
+
+<script>
+  async function refreshData() {
+    const { initializePublicDashboard } = await import('./js/ui/dashboard.js');
+    await initializePublicDashboard();
+    alert("✅ Data refreshed successfully!");
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Log Incident - StreetSafe Insight</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .map-container { height: 600px; border-radius: 22px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,.08); }
+    .panel { transition: .25s ease; }
+    .panel:hover { transform: translateY(-3px); }
+    .nav-link.active { background: #1e40af; color: white; border-radius: 14px; }
+    .hidden { display: none; }
+    .section-card { background: white; border: 1px solid #e2e8f0; border-radius: 24px; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05); }
+    .section-title { display: flex; align-items: center; gap: 0.6rem; font-size: 1.05rem; font-weight: 700; color: #0f172a; }
+    .section-subtitle { color: #64748b; font-size: 0.95rem; margin-top: 0.25rem; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+<header class="bg-gradient-to-r from-slate-900 to-indigo-900 text-white sticky top-0 z-50 shadow-xl">
+  <div class="max-w-screen-2xl mx-auto px-6 py-5 flex justify-between items-center flex-wrap gap-4">
+    <div class="flex items-center gap-4">
+      <div class="w-11 h-11 bg-white text-indigo-700 rounded-2xl flex items-center justify-center font-bold">🛡️</div>
+      <div>
+        <h1 class="text-xl font-semibold">StreetSafe Police Portal</h1>
+        <p class="text-indigo-200 text-sm">Ongata Rongai Command Center</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-4">
+      <span id="police-user-label" class="text-sm font-medium bg-white/10 px-4 py-2 rounded-full"></span>
+      <button onclick="logout()" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-xl text-sm font-semibold">Sign Out</button>
+      <a href="index.html" class="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl text-sm">Public View</a>
+    </div>
+  </div>
+</header>
+<div class="flex max-w-screen-2xl mx-auto">
+  <aside class="w-72 bg-white border-r min-h-screen p-5 hidden lg:flex flex-col gap-3">
+    <div class="px-2 pb-2"><p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Navigation</p></div>
+    <a href="police.html" class="nav-link text-left px-4 py-3 rounded-2xl inline-flex items-center"><i class="fa-solid fa-gauge mr-2"></i> Dashboard</a>
+    <div class="px-2 pt-3 pb-1"><p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Operations</p></div>
+    <a href="police-incidents.html" class="nav-link text-left px-4 py-3 rounded-2xl inline-flex items-center"><i class="fa-solid fa-list mr-2"></i> Incidents</a>
+    <a href="police-report.html" class="nav-link active text-left px-4 py-3 rounded-2xl inline-flex items-center"><i class="fa-solid fa-plus mr-2"></i> Log Incident</a>
+    <a href="police-response.html" class="nav-link text-left px-4 py-3 rounded-2xl inline-flex items-center"><i class="fa-solid fa-paper-plane mr-2"></i> Response</a>
+    <div class="px-2 pt-3 pb-1"><p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Maps</p></div>
+    <a href="police-map.html" class="nav-link text-left px-4 py-3 rounded-2xl inline-flex items-center"><i class="fa-solid fa-map mr-2"></i> Live Map</a>
+  </aside>
+  <main class="flex-1 p-6 lg:p-8 space-y-6">
+    <section class="space-y-6">
+      <div class="section-card p-6">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <h2 class="text-2xl font-semibold text-slate-900">Log New Incident</h2>
+            <p class="text-sm text-slate-500">Capture the key details quickly and keep records up to date.</p>
+          </div>
+        </div>
+        <form id="incident-form" class="mt-6 space-y-5">
+          <div class="grid gap-5 md:grid-cols-2">
+            <div>
+              <label class="mb-2 block text-sm font-medium text-slate-600">Street</label>
+              <select id="incident-street-select" class="w-full rounded-xl border border-slate-200 p-3 text-sm"></select>
+            </div>
+            <div>
+              <label class="mb-2 block text-sm font-medium text-slate-600">Incident Type</label>
+              <input id="incident-type" placeholder="Incident type" class="w-full rounded-xl border border-slate-200 p-3 text-sm">
+            </div>
+          </div>
+          <div class="grid gap-5 md:grid-cols-2">
+            <div>
+              <label class="mb-2 block text-sm font-medium text-slate-600">Severity</label>
+              <select id="incident-severity" class="w-full rounded-xl border border-slate-200 p-3 text-sm">
+                <option value="low">Low</option>
+                <option value="medium" selected>Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+            <div>
+              <label class="mb-2 block text-sm font-medium text-slate-600">Response Time</label>
+              <input id="incident-response-time" type="number" class="w-full rounded-xl border border-slate-200 p-3 text-sm" placeholder="Response time">
+            </div>
+          </div>
+          <div>
+            <label class="mb-2 block text-sm font-medium text-slate-600">Description</label>
+            <textarea id="incident-description" class="w-full rounded-xl border border-slate-200 p-3 text-sm" rows="4"></textarea>
+          </div>
+          <button class="w-full rounded-xl bg-blue-600 hover:bg-blue-700 px-3 py-3 text-sm font-semibold text-white">Save Incident</button>
+        </form>
+      </div>
+    </section>
+  </main>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module">
+  import { initializePolicePortal } from './js/ui/police.js';
+  import { authManager } from './js/core/auth.js';
+  window.logout = () => authManager.logout();
+  document.addEventListener('DOMContentLoaded', async () => {
+    await initializePolicePortal();
+  });
+</script>
+</body>
+</html>

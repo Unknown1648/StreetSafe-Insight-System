@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Police Dashboard - StreetSafe Insight</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    body { font-family: 'Inter', sans-serif; }
+
+    .map-container {
+      height: 600px;
+      border-radius: 22px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,.08);
+    }
+
+    .panel {
+      transition: .25s ease;
+    }
+
+    .panel:hover {
+      transform: translateY(-3px);
+    }
+
+    .nav-link.active {
+      background: #1e40af;
+      color: white;
+      border-radius: 14px;
+    }
+
+    .hidden { display: none; }
+
+    .section-card {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 24px;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .section-subtitle {
+      color: #64748b;
+      font-size: 0.95rem;
+      margin-top: 0.25rem;
+    }
+
+    .info-card {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 18px;
+      padding: 1rem 1.1rem;
+      box-shadow: 0 6px 16px rgba(15, 23, 42, 0.04);
+    }
+
+    .info-card.unread {
+      border-left: 4px solid #2563eb;
+    }
+
+    .info-card .muted {
+      color: #64748b;
+      font-size: 0.9rem;
+      margin-top: 0.35rem;
+    }
+
+    .notification-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+
+    .notification-actions button,
+    .notification-actions .muted {
+      font-size: 0.8rem;
+    }
+
+    .notification-actions button {
+      border: 1px solid #dbeafe;
+      background: #eff6ff;
+      color: #2563eb;
+      border-radius: 999px;
+      padding: 0.4rem 0.75rem;
+    }
+
+    tbody tr:hover {
+      background: #f8fafc;
+    }
+  </style>
+</head>
+
+<body class="bg-gray-50 text-gray-900">
+
+<!-- HEADER -->
+<header class="bg-gradient-to-r from-slate-900 to-indigo-900 text-white sticky top-0 z-50 shadow-xl">
+  <div class="max-w-screen-2xl mx-auto px-6 py-5 flex justify-between items-center flex-wrap gap-4">
+
+    <div class="flex items-center gap-4">
+      <div class="w-11 h-11 bg-white text-indigo-700 rounded-2xl flex items-center justify-center font-bold">
+        🛡️
+      </div>
+      <div>
+        <h1 class="text-xl font-semibold">StreetSafe Police Portal</h1>
+        <p class="text-indigo-200 text-sm">Ongata Rongai Command Center</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-4">
+      <span id="police-user-label" class="text-sm font-medium bg-white/10 px-4 py-2 rounded-full"></span>
+
+      <button onclick="logout()" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-xl text-sm font-semibold">
+        Sign Out
+      </button>
+
+      <a href="index.html" class="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl text-sm">
+        Public View
+      </a>
+    </div>
+
+  </div>
+</header>
+
+<div class="flex max-w-screen-2xl mx-auto">
+
+  <!-- SIDEBAR -->
+  <aside class="w-72 bg-white border-r min-h-screen p-5 hidden lg:flex flex-col gap-3">
+    <div class="px-2 pb-2">
+      <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Navigation</p>
+    </div>
+
+    <a href="police.html" class="nav-link active text-left px-4 py-3 rounded-2xl inline-flex items-center">
+      <i class="fa-solid fa-gauge mr-2"></i> Dashboard
+    </a>
+
+    <div class="px-2 pt-3 pb-1">
+      <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Operations</p>
+    </div>
+
+    <a href="police-incidents.html" class="nav-link text-left px-4 py-3 rounded-2xl inline-flex items-center">
+      <i class="fa-solid fa-list mr-2"></i> Incidents
+    </a>
+
+    <a href="police-report.html" class="nav-link text-left px-4 py-3 rounded-2xl inline-flex items-center">
+      <i class="fa-solid fa-plus mr-2"></i> Log Incident
+    </a>
+
+    <a href="police-response.html" class="nav-link text-left px-4 py-3 rounded-2xl inline-flex items-center">
+      <i class="fa-solid fa-paper-plane mr-2"></i> Response
+    </a>
+
+    <div class="px-2 pt-3 pb-1">
+      <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Maps</p>
+    </div>
+
+    <a href="police-map.html" class="nav-link text-left px-4 py-3 rounded-2xl inline-flex items-center">
+      <i class="fa-solid fa-map mr-2"></i> Live Map
+    </a>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="flex-1 p-6 lg:p-8 space-y-6">
+
+    <!-- DASHBOARD -->
+    <section id="view-dashboard" class="space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+        <div class="section-card p-6 h-full">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="text-sm font-medium text-slate-500">Active Incidents</p>
+              <h2 id="kpi-active" class="mt-3 text-4xl font-semibold text-slate-900">--</h2>
+            </div>
+            <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50">
+              <i class="fa-solid fa-triangle-exclamation text-red-600 text-xl"></i>
+            </div>
+          </div>
+          <p class="mt-4 text-sm text-slate-500">Live from reports</p>
+        </div>
+
+        <div class="section-card p-6 h-full">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="text-sm font-medium text-slate-500">Pending Responses</p>
+              <h2 id="kpi-pending" class="mt-3 text-4xl font-semibold text-slate-900">--</h2>
+            </div>
+            <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50">
+              <i class="fa-solid fa-clock text-amber-600 text-xl"></i>
+            </div>
+          </div>
+          <p class="mt-4 text-sm text-slate-500">Awaiting follow-up</p>
+        </div>
+
+        <div class="section-card p-6 h-full">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="text-sm font-medium text-slate-500">Resolved Cases</p>
+              <h2 id="kpi-resolved" class="mt-3 text-4xl font-semibold text-slate-900">--</h2>
+            </div>
+            <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50">
+              <i class="fa-solid fa-circle-check text-emerald-600 text-xl"></i>
+            </div>
+          </div>
+          <p class="mt-4 text-sm text-slate-500">Closed this cycle</p>
+        </div>
+
+        <div class="section-card p-6 h-full">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="text-sm font-medium text-slate-500">Alert Level</p>
+              <h2 id="kpi-alert" class="mt-3 text-4xl font-semibold text-slate-900">--</h2>
+            </div>
+            <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50">
+              <i class="fa-solid fa-shield-halved text-indigo-600 text-xl"></i>
+            </div>
+          </div>
+          <p class="mt-4 text-sm text-slate-500">Current patrol status</p>
+        </div>
+      </div>
+
+      <div class="grid lg:grid-cols-[1.7fr_0.9fr] gap-6">
+        <div class="space-y-6">
+          <div class="section-card p-6">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <h3 class="section-title"><i class="fa-solid fa-map text-indigo-600"></i> Live Safety Map</h3>
+                <p class="section-subtitle">Monitor streets and recent activity in one view.</p>
+              </div>
+            </div>
+            <div id="police-map" class="map-container mt-5"></div>
+          </div>
+
+          <div class="section-card p-6">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between gap-3">
+
+        <div>
+            <h3 class="section-title">
+                <i class="fa-solid fa-road text-slate-700"></i>
+                Street Profile Management
+            </h3>
+
+            <p class="section-subtitle">
+                Update street readiness, lighting, and watch details.
+            </p>
+        </div>
+
+    </div>
+
+
+    <div class="mt-5 grid lg:grid-cols-[0.95fr_1.05fr] gap-6">
+
+        <!-- STREET SELECTOR -->
+
+        <div class="rounded-2xl border border-slate-200 p-5 bg-slate-50/70">
+
+
+            <label class="block text-sm font-semibold text-slate-700 mb-2">
+                Select Street Profile
+            </label>
+
+
+            <select
+                id="street-picker"
+                class="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm">
+
+                <option value="">
+                    Select existing street to edit
+                </option>
+
+            </select>
+
+
+            <div class="mt-4 rounded-xl bg-white border border-slate-200 p-4">
+
+                <div class="flex items-center gap-3">
+
+                    <div class="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
+
+                        <i class="fa-solid fa-location-dot text-indigo-600"></i>
+
+                    </div>
+
+
+                    <div>
+
+                        <p class="text-sm font-semibold text-slate-700">
+                            Street Profile Editor
+                        </p>
+
+                        <p class="text-xs text-slate-500">
+                            Select a street above to update details.
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- Kept hidden because existing JS expects this element -->
+
+            <div
+                id="police-streets-container"
+                class="hidden">
+            </div>
+
+
+        </div>
+
+        <!-- STREET FORM -->
+
+        <div class="rounded-2xl border border-slate-200 p-5 bg-white">
+
+
+            <form id="street-form" class="space-y-4">
+
+
+                <input type="hidden" id="street-id">
+
+
+
+                <div class="flex items-center justify-between gap-3">
+
+
+                    <h4
+                        id="street-form-title"
+                        class="text-sm font-semibold text-slate-700">
+
+                        Add or Edit Street Profile
+
+                    </h4>
+
+
+
+                    <button
+                        type="button"
+                        onclick="clearStreetForm()"
+                        class="text-sm text-slate-500 hover:text-slate-800">
+
+                        Reset
+
+                    </button>
+
+
+                </div>
+
+
+
+
+                <!-- BASIC INFORMATION -->
+
+                <div class="grid md:grid-cols-2 gap-4">
+
+
+                    <input
+                        id="street-name"
+                        required
+                        placeholder="Street name"
+                        class="w-full rounded-xl border border-slate-200 p-3 text-sm">
+
+
+                    <input
+                        id="street-area"
+                        required
+                        placeholder="Area / neighborhood"
+                        class="w-full rounded-xl border border-slate-200 p-3 text-sm">
+
+
+                </div>
+
+
+
+
+
+                <!-- COORDINATES -->
+
+
+                <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+
+
+                    <label class="flex items-center gap-2 text-sm text-slate-600 mb-3">
+
+                        <input
+                            id="edit-coordinates"
+                            type="checkbox">
+
+                        <span>
+                            Edit coordinates
+                        </span>
+
+                    </label>
+
+
+
+                    <div class="grid md:grid-cols-2 gap-4">
+
+
+                        <input
+                            id="street-lat"
+                            type="number"
+                            step="any"
+                            placeholder="Latitude"
+                            class="w-full rounded-xl border border-slate-200 p-3 text-sm"
+                            disabled>
+
+
+
+                        <input
+                            id="street-lng"
+                            type="number"
+                            step="any"
+                            placeholder="Longitude"
+                            class="w-full rounded-xl border border-slate-200 p-3 text-sm"
+                            disabled>
+
+
+                    </div>
+
+
+                </div>
+
+
+
+
+
+                <!-- SAFETY DETAILS -->
+
+
+                <div class="grid md:grid-cols-2 gap-4">
+
+
+                    <select
+                        id="street-lighting"
+                        class="w-full rounded-xl border border-slate-200 p-3 text-sm">
+
+
+                        <option value="good">
+                            Good lighting
+                        </option>
+
+
+                        <option value="moderate" selected>
+                            Moderate lighting
+                        </option>
+
+
+                        <option value="poor">
+                            Poor lighting
+                        </option>
+
+
+                    </select>
+
+
+
+
+
+                    <label
+                        class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600">
+
+
+                        <input
+                            id="street-cctv"
+                            type="checkbox">
+
+
+                        CCTV available
+
+
+                    </label>
+
+
+
+                </div>
+
+
+
+
+
+                <label
+                    class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600">
+
+
+                    <input
+                        id="street-watch"
+                        type="checkbox">
+
+
+                    Neighborhood watch active
+
+
+                </label>
+
+
+
+
+
+
+                <textarea
+                    id="street-notes"
+                    rows="4"
+                    placeholder="Add notes about patrols, risk factors, access points, or recent issues"
+                    class="w-full rounded-xl border border-slate-200 p-3 text-sm"></textarea>
+
+
+
+
+
+
+                <button
+                    type="submit"
+                    id="street-submit-label"
+                    class="w-full rounded-xl bg-blue-600 hover:bg-blue-700 px-3 py-3 text-sm font-semibold text-white">
+
+                    Save Street Details
+
+                </button>
+
+
+            </form>
+
+
+        </div>
+
+    </div>
+
+</div>
+
+          <div class="section-card p-6">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <h3 class="section-title"><i class="fa-solid fa-chart-column text-slate-700"></i> Street Crime Reports</h3>
+                <p class="section-subtitle">Monitor trends from submitted reports and patrol activity.</p>
+              </div>
+              <select id="street-report-group" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                <option value="type">By Crime Type</option>
+                <option value="date">By Date</option>
+                <option value="score">By Street Score</option>
+              </select>
+            </div>
+            <div id="street-report-list" class="mt-5 space-y-3"></div>
+          </div>
+        </div>
+
+        <div class="space-y-6">
+          <div class="section-card p-6">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <h3 class="section-title"><i class="fa-solid fa-bell text-amber-600"></i> Notifications</h3>
+                <p class="section-subtitle">A focused feed of patrol and community updates.</p>
+              </div>
+            </div>
+            <div id="police-notifications-list" class="mt-5 space-y-3"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script type="module">
+  import { initializePolicePortal } from './js/ui/police.js';
+  import { authManager } from './js/core/auth.js';
+
+  window.logout = () => authManager.logout();
+
+  async function loadPoliceKPIs() {
+    const res = await fetch('api/police-kpis.php');
+    const data = await res.json();
+
+    document.getElementById('kpi-active').textContent = data.active;
+    document.getElementById('kpi-pending').textContent = data.pending;
+    document.getElementById('kpi-resolved').textContent = data.resolved;
+    document.getElementById('kpi-alert').textContent = data.alert_label || (
+      data.alert > 70 ? "LOW" :
+      data.alert > 40 ? "MEDIUM" : "HIGH"
+    );
+  }
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    await initializePolicePortal();
+    await loadPoliceKPIs();
+  });
+</script>
+
+</body>
+</html>

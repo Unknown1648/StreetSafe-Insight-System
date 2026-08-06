@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Community Dashboard - StreetSafe Insight</title>
+
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <style>
+    :root{
+      --primary:#2563eb;
+      --danger:#dc2626;
+      --bg:#f8fafc;
+      --card:#ffffff;
+      --border:#e2e8f0;
+      --text:#0f172a;
+      --muted:#64748b;
+      --shadow:0 15px 35px rgba(15,23,42,.08);
+    }
+
+    *{ box-sizing:border-box; }
+
+    body{
+      margin:0;
+      font-family:'Segoe UI',system-ui,sans-serif;
+      color:var(--text);
+      background:var(--bg);
+      display:grid;
+      grid-template-columns:280px 1fr;
+      height:100vh;
+      overflow:hidden;
+    }
+
+    /* SIDEBAR */
+    .sidebar{
+      background:#0f172a;
+      color:white;
+      padding:20px;
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+    }
+
+    .brand h2{
+      margin:0;
+      font-size:1.3rem;
+    }
+
+    .brand p{
+      margin:6px 0 20px;
+      font-size:.85rem;
+      color:#94a3b8;
+    }
+
+    nav{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+
+    .nav-item{
+      padding:12px;
+      border:none;
+      border-radius:10px;
+      background:transparent;
+      color:#e2e8f0;
+      text-align:left;
+      cursor:pointer;
+      transition:.2s;
+      font-weight:600;
+    }
+
+    .nav-item:hover,
+    .nav-item.active{
+      background:#1e3a8a;
+      color:white;
+    }
+
+    .logout-btn{
+      margin-top:20px;
+      padding:12px;
+      border:none;
+      border-radius:10px;
+      background:var(--danger);
+      color:white;
+      cursor:pointer;
+      font-weight:600;
+    }
+
+    /* MAIN */
+    main{
+      overflow-y:auto;
+      padding:20px;
+    }
+
+    header{
+      display:flex;
+      justify-content:space-between;
+      flex-wrap:wrap;
+      gap:15px;
+      align-items:center;
+      margin-bottom:20px;
+    }
+
+    header h1{
+      margin:0;
+      font-size:1.8rem;
+    }
+
+    .summary-grid{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:10px;
+      width:100%;
+    }
+
+    .summary-grid div{
+      background:white;
+      padding:10px;
+      border-radius:10px;
+      border:1px solid var(--border);
+      font-size:.85rem;
+    }
+
+    .summary-grid span{
+      display:block;
+      font-weight:700;
+      font-size:1.1rem;
+    }
+
+    /* VIEWS */
+    .view{ display:none; }
+    .view.active{ display:block; }
+
+    /* DASHBOARD */
+    .dashboard-layout{
+      display:grid;
+      grid-template-columns:3fr 1fr;
+      gap:20px;
+    }
+
+    #community-map{
+      height:70vh;
+      border-radius:15px;
+      border:1px solid var(--border);
+    }
+
+    .panel{
+      background:white;
+      padding:15px;
+      border-radius:15px;
+      border:1px solid var(--border);
+    }
+
+    /* CARDS */
+    #street-scores{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+      gap:10px;
+      margin-top:15px;
+    }
+
+    /* FORMS */
+    input,select,textarea{
+      width:100%;
+      padding:10px;
+      border-radius:8px;
+      border:1px solid var(--border);
+      margin-top:5px;
+    }
+
+    button{
+      cursor:pointer;
+    }
+
+    /* RESPONSIVE */
+    @media(max-width:900px){
+      body{
+        grid-template-columns:1fr;
+      }
+
+      .sidebar{
+        flex-direction:row;
+        overflow-x:auto;
+      }
+
+      .dashboard-layout{
+        grid-template-columns:1fr;
+      }
+
+      .summary-grid{
+        grid-template-columns:repeat(2,1fr);
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+
+  <div>
+    <div class="brand">
+      <h2>🛡 StreetSafe Insight</h2>
+      <p>Community Safety Platform</p>
+    </div>
+
+    <nav>
+      <button class="nav-item active" data-view="dashboard">📊 Dashboard</button>
+      <button class="nav-item" data-view="streets">🛣 Streets</button>
+      <button class="nav-item" data-view="report">🚨 Report Incident</button>
+      <button class="nav-item" data-view="notifications">🔔 Notifications</button>
+      <button class="nav-item" data-view="profile">👤 Profile</button>
+    </nav>
+  </div>
+
+  <button class="logout-btn" id="logout-btn">🚪 Sign Out</button>
+</aside>
+
+<!-- MAIN -->
+<main>
+
+  <!-- HEADER -->
+  <header>
+    <h1>StreetSafe Insight</h1>
+
+    <div class="summary-grid">
+      <div>Notifications <span id="notification-count">0</span></div>
+      <div>My Reports <span id="report-count">0</span></div>
+      <div>Unsafe Street <span id="unsafe-street">N/A</span></div>
+      <div>Safe Street <span id="safe-street">N/A</span></div>
+    </div>
+  </header>
+  <script type="module">
+    async function loadDashboardStats() {
+      const res = await fetch('api/dashboard-stats.php');
+      const data = await res.json();
+
+      document.getElementById('notification-count').textContent = data.notifications;
+      document.getElementById('report-count').textContent = data.myReports;
+
+      document.getElementById('unsafe-street').textContent = data.unsafeStreets;
+      document.getElementById('safe-street').textContent = data.safeStreets;
+    }
+
+    document.addEventListener('DOMContentLoaded', loadDashboardStats);
+  </script>
+  <!-- DASHBOARD VIEW -->
+  <section id="view-dashboard" class="view active">
+
+    <div class="dashboard-layout">
+
+      <div>
+        <div id="community-map"></div>
+      </div>
+
+      <div class="panel">
+        <h3>Recent Reports</h3>
+        <div id="my-reports"></div>
+      </div>
+
+    </div>
+
+  </section>
+
+  <!-- STREETS VIEW -->
+  <section id="view-streets" class="view">
+    <div class="panel">
+      <h2>Street Safety Rankings</h2>
+      <div id="street-scores"></div>
+    </div>
+  </section>
+
+  <!-- REPORT VIEW -->
+  <section id="view-report" class="view">
+    <div class="panel">
+      <h2>Report an Incident</h2>
+
+      <form id="report-form">
+        <label>Location</label>
+        <select id="report-street-select"></select>
+
+       <label>Type</label>
+        <select id="report-type" onchange="toggleOtherType()">
+          <option value="">-- Select Type --</option>
+          <option value="theft">Theft</option>
+          <option value="assault">Assault</option>
+          <option value="robbery">Robbery</option>
+          <option value="burglary">Burglary</option>
+          <option value="vandalism">Vandalism</option>
+          <option value="traffic">Traffic Incident</option>
+          <option value="lighting">Poor Lighting</option>
+          <option value="suspicious">Suspicious Activity</option>
+          <option value="harassment">Harassment</option>
+          <option value="other">Other (Specify)</option>
+        </select>
+
+        <input 
+          id="report-type-custom"
+          type="text"
+          placeholder="Please specify incident type"
+          style="display:none; margin-top:10px;"
+        >
+
+        <label>Severity</label>
+        <select id="report-severity">
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+
+        <label>Description</label>
+        <textarea id="report-description"></textarea>
+
+        <label>Incident Time</label>
+        <input type="number" id="report-response-time">
+
+        <label>Source Name</label>
+        <input id="report-source-name">
+
+        <label>
+          <input type="checkbox" id="report-anonymous">
+          Anonymous
+        </label>
+
+        <button type="submit">Submit</button>
+      </form>
+    </div>
+  </section>
+  <script>
+    function toggleOtherType() {
+      const select = document.getElementById("report-type");
+      const customInput = document.getElementById("report-type-custom");
+
+      if (select.value === "other") {
+        customInput.style.display = "block";
+        customInput.required = true;
+      } else {
+        customInput.style.display = "none";
+        customInput.required = false;
+        customInput.value = "";
+      }
+    }
+  </script>
+
+  <!-- NOTIFICATIONS VIEW -->
+  <section id="view-notifications" class="view">
+    <div class="panel">
+      <h2>Notifications</h2>
+      <div id="notifications-list"></div>
+    </div>
+  </section>
+
+  <!-- PROFILE VIEW -->
+  <section id="view-profile" class="view">
+    <div class="panel">
+      <h2>My Profile</h2>
+
+      <form id="profile-form">
+        <input id="profile-full-name" placeholder="Full Name">
+        <input id="profile-display-name" placeholder="Display Name">
+        <input id="profile-email" placeholder="Email">
+        <input id="profile-phone" placeholder="Phone">
+        <input id="profile-neighborhood" placeholder="Neighborhood">
+        <input id="profile-address" placeholder="Address">
+        <textarea id="profile-note"></textarea>
+
+        <label>
+          <input type="checkbox" id="profile-public">
+          Public Profile
+        </label>
+
+        <button type="submit">Save</button>
+      </form>
+    </div>
+  </section>
+
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script type="module">
+  import { initializeCommunityDashboard } from './js/ui/community.js';
+  import { authManager } from './js/core/auth.js';
+
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    await authManager.logout();
+  });
+
+  // VIEW SWITCHER
+  const buttons = document.querySelectorAll("[data-view]");
+  const views = document.querySelectorAll(".view");
+
+  buttons.forEach(btn => {
+    btn.addEventListener("click", () => {
+
+      buttons.forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+
+      views.forEach(v => v.classList.remove("active"));
+      document.getElementById("view-" + btn.dataset.view).classList.add("active");
+
+    });
+  });
+
+  initializeCommunityDashboard();
+</script>
+
+</body>
+</html>

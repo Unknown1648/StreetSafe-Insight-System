@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Police Reports - StreetSafe Insight</title>
+  <link rel="stylesheet" href="https://cdn.tailwindcss.com">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #f8fafc; color: #0f172a; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 28px 24px; }
+    .section-card { background: white; border: 1px solid #e2e8f0; border-radius: 24px; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05); }
+    .report-card { border: 1px solid #e2e8f0; border-radius: 20px; background: white; padding: 20px; box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04); }
+    .report-card h4 { font-size: 1.05rem; font-weight: 700; color: #0f172a; }
+    .report-card p { color: #475569; }
+    .report-details { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); margin-top: 14px; }
+    .report-pill { border-radius: 999px; background: #eef2ff; color: #4338ca; padding: 6px 12px; font-size: 0.8rem; font-weight: 600; }
+    .loader { display: inline-flex; align-items: center; gap: 0.75rem; font-size: 0.95rem; color: #64748b; }
+    .link-btn { display: inline-flex; align-items: center; gap: 0.75rem; padding: 0.85rem 1.2rem; border-radius: 18px; background: white; border: 1px solid #e2e8f0; color: #0f172a; text-decoration: none; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="section-card p-6 mb-6">
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <p class="text-sm text-slate-500 uppercase tracking-[0.2em]">Police Reports</p>
+          <h1 class="mt-3 text-3xl font-semibold text-slate-900">All Submitted Reports</h1>
+          <p class="mt-2 max-w-2xl text-slate-500">Review every report made by the community and police, with street details and incident status.</p>
+        </div>
+        <div class="flex flex-wrap gap-3">
+          <a href="police.html" class="link-btn"><i class="fa-solid fa-arrow-left"></i> Back to dashboard</a>
+          <button id="refresh-reports" class="link-btn"><i class="fa-solid fa-arrows-rotate"></i> Refresh</button>
+        </div>
+      </div>
+    </header>
+
+    <section id="report-summary" class="grid gap-5 lg:grid-cols-3 mb-6"></section>
+
+    <section id="reports-list" class="grid gap-5"></section>
+
+    <p id="reports-empty" class="text-slate-500 hidden">No reports were found. Refresh to retry.</p>
+  </div>
+
+  <script>
+    const reportsList = document.getElementById('reports-list');
+    const reportsEmpty = document.getElementById('reports-empty');
+    const reportSummary = document.getElementById('report-summary');
+    const refreshButton = document.getElementById('refresh-reports');
+
+    async function fetchReports() {
+      reportsList.innerHTML = '<div class="loader"><i class="fa-solid fa-spinner fa-spin"></i> Loading reports...</div>';
+      try {
+        const response = await fetch('api/reports.php?scope=all', { credentials: 'include' });
+        if (!response.ok) throw new Error('Fetch failed');
+        const data = await response.json();
+        renderReports(data.reports || []);
+      } catch (error) {
+        reportsList.innerHTML = '<div class="text-red-600">Unable to load reports.</div>';
+      }
+    }
+
+    function renderReports(reports) {
+      reportsEmpty.classList.toggle('hidden', reports.length > 0);
+      reportSummary.innerHTML = `
+        <div class="section-card p-6">
+          <p class="text-sm font-medium text-slate-500">Total Reports</p>
+          <h2 class="mt-4 text-3xl font-semibold text-slate-900">${reports.length}</h2>
+        </div>
+        <div class="section-card p-6">
+          <p class="text-sm font-medium text-slate-500">Pending Assignment</p>
+          <h2 class="mt-4 text-3xl font-semibold text-slate-900">${reports.filter(r => !r.incident_id).length}</h2>
+        </div>
+        <div class="section-card p-6">
+          <p class="text-sm font-medium text-slate-500">Resolved or Closed</p>
+          <h2 class="mt-4 text-3xl font-semibold text-slate-900">${reports.filter(r => r.status === 'resolved').length}</h2>
+        </div>
+      `;
+
+      reportsList.innerHTML = reports.map(report => `
+        <article class="report-card">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <h4>${report.type || 'Report'} · <span class="text-slate-500 font-medium">${report.street_name || 'Unknown street'}</span></h4>
+              <p class="mt-2 text-slate-500 text-sm">${report.description || 'No description provided.'}</p>
+            </div>
+            <span class="report-pill">${report.status || 'reported'}</span>
+          </div>
+          <div class="report-details">
+            <div><strong>Reporter</strong><p>${report.reporter_label || report.source_name || 'Anonymous'}</p></div>
+            <div><strong>Severity</strong><p>${report.severity || 'medium'}</p></div>
+            <div><strong>Street</strong><p>${report.street_area || 'Unknown'}</p></div>
+            <div><strong>Reported</strong><p>${new Date(report.reported_at || report.created_at || '').toLocaleString()}</p></div>
+          </div>
+        </article>
+      `).join('');
+    }
+
+    refreshButton.addEventListener('click', fetchReports);
+    fetchReports();
+  </script>
+</body>
+</html>
